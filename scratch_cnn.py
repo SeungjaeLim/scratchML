@@ -2,15 +2,15 @@
 import numpy as np
 
 class ConvLayer:
-    def __init__(self, f, n_c, stride=1, pad=0):
+    def __init__(self, f, n_c, n_f, stride=1, pad=0):
         self.f = f
         self.stride = stride
         self.pad = pad
-        self.weights = np.random.randn(f, f, n_c) * 0.01
-        self.biases = np.zeros((f, f, 1))
+        self.weights = np.random.randn(f, f, n_c, n_f) * 0.01
+        self.biases = np.zeros((1, 1, 1, n_f))
 
     def zero_pad(self, X, pad):
-        return np.pad(X, ((pad, pad), (pad, pad), (0, 0)), mode='constant', constant_values=(0, 0))
+        return np.pad(X, ((0, 0), (pad, pad), (pad, pad), (0, 0)), mode='constant', constant_values=(0, 0))
 
     def conv_single_step(self, a_slice, W, b):
         s = a_slice * W
@@ -76,13 +76,15 @@ class ConvLayer:
 
                         da_prev_pad[vert_start:vert_end, horiz_start:horiz_end, :] += W[:, :, :, c] * dZ[i, h, w, c]
                         dW[:, :, :, c] += a_slice * dZ[i, h, w, c]
-                        db[:, :, :, c] += dZ[i, h, w, c]
+                        db[:, :, :, c] += np.sum(dZ[i, h, w, c])
 
             dA_prev[i, :, :, :] = da_prev_pad[pad:-pad, pad:-pad, :]
 
         assert(dA_prev.shape == (m, n_H_prev, n_W_prev, n_C_prev))
 
         return dA_prev, dW, db
+
+
     
     def update(self, dW, db, learning_rate):
         self.weights -= learning_rate * dW
